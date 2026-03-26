@@ -1,5 +1,7 @@
 package dev.mrturtle.spatial.mixin;
 
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.recipe.RecipeMatcher;
 import org.spongepowered.asm.mixin.Mixin;
@@ -13,9 +15,10 @@ public class RecipeMatcherMixin {
     public void addInput(ItemStack stack, int maxCount, CallbackInfo ci) {
         if (stack.isEmpty())
             return;
-        if (!stack.hasNbt())
+        NbtComponent customData = stack.get(DataComponentTypes.CUSTOM_DATA);
+        if (customData == null)
             return;
-        if (!stack.getOrCreateNbt().getBoolean("isSpatialCopy"))
+        if (!customData.copyNbt().getBoolean("isSpatialCopy"))
             return;
         ci.cancel();
     }
