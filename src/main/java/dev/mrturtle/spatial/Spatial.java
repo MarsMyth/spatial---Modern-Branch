@@ -124,8 +124,10 @@ public class Spatial implements ModInitializer {
     }
 
     private static void loadDefaultOverrides() {
+        addShapeOverride(Items.BUNDLE, new String[] {"x", "x"}); // FIX SOON
         // Ingots
         addShapeOverride(Items.IRON_INGOT, new String[] {"xx"});
+        addShapeOverrideFrom(Items.COPPER_INGOT, Items.IRON_INGOT);
         addShapeOverrideFrom(Items.GOLD_INGOT, Items.IRON_INGOT);
         addShapeOverrideFrom(Items.NETHERITE_INGOT, Items.IRON_INGOT);
         // Netherite Stuff
@@ -180,6 +182,7 @@ public class Spatial implements ModInitializer {
         addShapeOverrideFrom(Items.TRAPPED_CHEST, Items.CHEST);
         addShapeOverrideFrom(Items.CARROT_ON_A_STICK, Items.FISHING_ROD);
         addShapeOverrideFrom(Items.WARPED_FUNGUS_ON_A_STICK, Items.FISHING_ROD);
+        addShapeOverrideFrom(Items.RECOVERY_COMPASS, Items.COMPASS);
     }
 
     /**This method can be used to add a custom shape override to an item
