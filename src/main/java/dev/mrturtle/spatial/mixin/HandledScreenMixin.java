@@ -1,9 +1,11 @@
 package dev.mrturtle.spatial.mixin;
 
 import dev.mrturtle.spatial.Spatial;
+import dev.mrturtle.spatial.SpatialClient;
 import dev.mrturtle.spatial.inventory.InventoryPosition;
 import dev.mrturtle.spatial.inventory.InventoryShape;
-import dev.mrturtle.spatial.other.SpatialUtil;
+import dev.mrturtle.spatial.util.RotationUtil;
+import dev.mrturtle.spatial.util.SpatialUtil;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.screen.ingame.HandledScreen;
@@ -11,6 +13,7 @@ import net.minecraft.client.render.RenderLayer;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.screen.ScreenHandler;
 import net.minecraft.screen.slot.Slot;
 import net.minecraft.text.Text;
@@ -37,6 +40,31 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
 
     @Shadow @Nullable protected abstract Slot getSlotAt(double x, double y);
 
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+
+    private static int getRotation(ItemStack stack) {
+        return SpatialClient.cursorRotation;
+    }
+
+    private static void setRotation(ItemStack stack, int rotation) {
+        NbtCompound nbt;
+        NbtComponent customData = stack.get(DataComponentTypes.CUSTOM_DATA);
+        nbt = customData != null ? customData.copyNbt() : new NbtCompound();
+        nbt.putInt("spatialRotation", ((rotation % 4) + 4) % 4);
+        stack.set(DataComponentTypes.CUSTOM_DATA, net.minecraft.component.type.NbtComponent.of(nbt));
+    }
+
+    private InventoryShape getShapeWithRotation(ItemStack stack) {
+        InventoryShape base = Spatial.getShape(stack);
+        return RotationUtil.applyRotation(base, getRotation(stack));
+    }
+
+    // -----------------------------------------------------------------------
+    // Draw the shape highlight on placed slots
+    // -----------------------------------------------------------------------
+
     @Inject(method = "drawSlot", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/DrawContext;drawItem(Lnet/minecraft/item/ItemStack;III)V", shift = At.Shift.AFTER, ordinal = 0))
     public void drawSlot(DrawContext context, Slot slot, CallbackInfo ci) {
         ItemStack stack = slot.getStack();
@@ -49,6 +77,10 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
         context.fill(RenderLayer.getGui(), slot.x - 1, slot.y - 1, slot.x + 17, slot.y + 17, SpatialUtil.colorFromItemStack(stack, true));
     }
 
+    // -----------------------------------------------------------------------
+    // Draw the cursor stack with rotation applied
+    // -----------------------------------------------------------------------
+
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screen/ingame/HandledScreen;drawItem(Lnet/minecraft/client/gui/DrawContext;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V", shift = At.Shift.BEFORE, ordinal = 0))
     public void renderCursorStack(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         ItemStack stack = handler.getCursorStack();
@@ -56,7 +88,7 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
             return;
         if (Spatial.getShape(stack).shape.size() == 1)
             return;
-        InventoryShape shape = Spatial.getShape(stack);
+        InventoryShape shape = getShapeWithRotation(stack);
         for (InventoryPosition pos : shape.shape) {
             int i = (pos.x - shape.shape.get(0).x) * 18 + mouseX - x - 8;
             int j = (pos.y - shape.shape.get(0).y) * 18 + mouseY - y - 8;
@@ -67,12 +99,16 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Highlight slots the rotated shape would occupy
+    // -----------------------------------------------------------------------
+
     @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/screen/ingame/HandledScreen;drawSlotHighlight(Lnet/minecraft/client/gui/DrawContext;III)V", shift = At.Shift.AFTER, ordinal = 0))
     public void renderHighlightedSlots(DrawContext context, int mouseX, int mouseY, float delta, CallbackInfo ci) {
         ItemStack stack = handler.getCursorStack();
         if (stack.isEmpty())
             return;
-        InventoryShape shape = Spatial.getShape(stack);
+        InventoryShape shape = getShapeWithRotation(stack);
         for (InventoryPosition pos : shape.shape) {
             if (pos == shape.shape.get(0))
                 continue;
@@ -86,6 +122,10 @@ public abstract class HandledScreenMixin<T extends ScreenHandler> {
             HandledScreen.drawSlotHighlight(context, slot.x, slot.y, 0);
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Suppress tooltip for spatial copy ghost items
+    // -----------------------------------------------------------------------
 
     @Inject(method = "getTooltipFromItem", at = @At("RETURN"), cancellable = true)
     public void getTooltipFromItem(ItemStack stack, CallbackInfoReturnable<List<Text>> cir) {

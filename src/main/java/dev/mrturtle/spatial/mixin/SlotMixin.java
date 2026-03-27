@@ -2,13 +2,11 @@ package dev.mrturtle.spatial.mixin;
 
 import dev.mrturtle.spatial.Spatial;
 import dev.mrturtle.spatial.inventory.InventoryShape;
-import dev.mrturtle.spatial.other.SpatialUtil;
-import net.minecraft.block.entity.*;
+import dev.mrturtle.spatial.util.RotationUtil;
+import dev.mrturtle.spatial.util.SpatialUtil;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.inventory.DoubleInventory;
-import net.minecraft.inventory.EnderChestInventory;
 import net.minecraft.inventory.Inventory;
 import net.minecraft.item.ItemStack;
 import net.minecraft.screen.slot.Slot;
@@ -38,6 +36,16 @@ public abstract class SlotMixin {
         return customData.copyNbt().getBoolean("isSpatialCopy");
     }
 
+    @Unique
+    private static InventoryShape getRotatedShape(ItemStack stack) {
+        InventoryShape base = Spatial.getShape(stack);
+        NbtComponent customData = stack.get(DataComponentTypes.CUSTOM_DATA);
+        if (customData == null)
+            return base;
+        int rotation = customData.copyNbt().getInt("spatialRotation");
+        return RotationUtil.applyRotation(base, rotation);
+    }
+
     @Inject(method = "canInsert", at = @At("RETURN"), cancellable = true)
     public void canInsert(ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
         if (!cir.getReturnValue())
@@ -46,11 +54,10 @@ public abstract class SlotMixin {
             return;
         if (SpatialUtil.isInvalidInventory(inventory))
             return;
-        // Don't run on hotbar slots or offhand
         if (inventory instanceof PlayerInventory)
             if (index <= 8 || index == 40)
                 return;
-        InventoryShape shape = Spatial.getShape(stack);
+        InventoryShape shape = getRotatedShape(stack);
         cir.setReturnValue(shape.canPlaceAt(inventory, index));
     }
 
@@ -63,14 +70,12 @@ public abstract class SlotMixin {
         if (SpatialUtil.isInvalidInventory(inventory))
             return;
         if (inventory instanceof PlayerInventory) {
-            // Don't run on hotbar slots or offhand
             if (index <= 8 || index == 40)
                 return;
-            // Don't run on armor slots
             if (getMaxItemCount() == 1)
                 return;
         }
-        InventoryShape shape = Spatial.getShape(previousStack);
+        InventoryShape shape = getRotatedShape(previousStack); // was Spatial.getShape()
         shape.removeAt(inventory, index);
     }
 
@@ -83,14 +88,12 @@ public abstract class SlotMixin {
         if (SpatialUtil.isInvalidInventory(inventory))
             return;
         if (inventory instanceof PlayerInventory) {
-            // Don't run on hotbar slots or offhand
             if (index <= 8 || index == 40)
                 return;
-            // Don't run on armor slots
             if (getMaxItemCount() == 1)
                 return;
         }
-        InventoryShape shape = Spatial.getShape(stack);
+        InventoryShape shape = getRotatedShape(stack);
         shape.placeAt(inventory, index, stack);
     }
 
@@ -102,7 +105,7 @@ public abstract class SlotMixin {
             return;
         if (SpatialUtil.isInvalidInventory(inventory))
             return;
-        InventoryShape shape = Spatial.getShape(stack);
+        InventoryShape shape = getRotatedShape(stack);
         shape.placeAt(inventory, index, stack);
     }
 

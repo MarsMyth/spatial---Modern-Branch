@@ -1,4 +1,4 @@
-package dev.mrturtle.spatial.other;
+package dev.mrturtle.spatial.util;
 
 import net.minecraft.block.entity.BarrelBlockEntity;
 import net.minecraft.block.entity.ChestBlockEntity;

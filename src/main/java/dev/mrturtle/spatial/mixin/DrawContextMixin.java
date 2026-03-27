@@ -1,6 +1,6 @@
 package dev.mrturtle.spatial.mixin;
 
-import dev.mrturtle.spatial.other.SpatialUtil;
+import dev.mrturtle.spatial.util.SpatialUtil;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.RenderLayer;

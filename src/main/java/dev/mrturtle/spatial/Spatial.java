@@ -2,6 +2,7 @@ package dev.mrturtle.spatial;
 
 import dev.mrturtle.spatial.config.ConfigManager;
 import dev.mrturtle.spatial.inventory.InventoryShape;
+import dev.mrturtle.spatial.networking.SetRotationPayload;
 import dev.mrturtle.spatial.networking.SpatialNetworking;
 import dev.mrturtle.spatial.networking.SyncShapesPayload;
 import net.fabricmc.api.ModInitializer;
@@ -11,9 +12,12 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.recipe.Ingredient;
 import net.minecraft.recipe.Recipe;
 import net.minecraft.recipe.RecipeEntry;
@@ -57,6 +61,21 @@ public class Spatial implements ModInitializer {
                     LOGGER.info(ID.toString());
             }
             ServerPlayNetworking.send(handler.player, new SyncShapesPayload(new HashMap<>(shapes)));
+        });
+
+        // In onInitialize(), add:
+        PayloadTypeRegistry.playC2S().register(SetRotationPayload.ID, SetRotationPayload.CODEC);
+
+        ServerPlayNetworking.registerGlobalReceiver(SetRotationPayload.ID, (payload, context) -> {
+            context.player().getServer().execute(() -> {
+                // Store rotation on the player's cursor stack NBT server-side
+                ItemStack cursor = context.player().currentScreenHandler.getCursorStack();
+                if (cursor.isEmpty()) return;
+                NbtComponent customData = cursor.get(DataComponentTypes.CUSTOM_DATA);
+                NbtCompound nbt = customData != null ? customData.copyNbt() : new NbtCompound();
+                nbt.putInt("spatialRotation", payload.rotation());
+                cursor.set(DataComponentTypes.CUSTOM_DATA, NbtComponent.of(nbt));
+            });
         });
     }
 
